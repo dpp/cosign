@@ -1,5 +1,5 @@
 //
-// Copyright 2021 The Sigstore Authors.
+// Copyright 2021-2023 The Sigstore Authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,6 +21,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"strings"
+	"net/http"
 	"os"
 	"path/filepath"
 
@@ -47,6 +49,15 @@ func SignBlobCmd(ro *options.RootOptions, ko options.KeyOpts, payloadPath string
 
 	if payloadPath == "-" {
 		payload = internal.NewHashReader(os.Stdin, sha256.New())
+	} else if strings.HasPrefix(payloadPath, "ipfs://") {
+		// FIXME TODO -- support connecting to local/remote IPFS daemon
+		toFetch := "http://ipfs.io/ipfs/" + payloadPath[7:]
+		resp, err := http.Get(toFetch)
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+		payload = internal.NewHashReader(resp.Body, sha256.New())
 	} else {
 		ui.Infof(ctx, "Using payload from: %s", payloadPath)
 		f, err := os.Open(filepath.Clean(payloadPath))
